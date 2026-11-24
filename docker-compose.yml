@@ -1,0 +1,118 @@
+
+services:
+
+  # PRIMARY DATABASE
+  primary:
+    image: postgres:16
+    container_name: iris-primary
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - primary_data:/var/lib/postgresql/data
+      - ./database/primary/init:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iris_admin -d iris_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # READ REPLICA DATABASE
+  replica:
+    image: postgres:16
+    container_name: iris-replica
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    entrypoint:
+      - /bin/bash
+      - /scripts/replica-entrypoint.sh
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - replica_data:/var/lib/postgresql/data
+      - ./database/replica/replica-entrypoint.sh:/scripts/replica-entrypoint.sh:ro
+
+    depends_on:
+      primary:
+        condition: service_healthy
+
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    container_name: iris-keycloak
+    restart: unless-stopped
+
+    command: start-dev
+
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://auth.lokal
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+
+  # FASTAPI BACKEND
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: iris-backend
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      PRIMARY_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@primary:5432/${POSTGRES_DB}
+
+      REPLICA_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@replica:5432/${POSTGRES_DB}
+
+      KEYCLOAK_URL: http://localhost:8080
+      KEYCLOAK_REALM: iris-realms
+      KEYCLOAK_CLIENT_ID: iris-api
+
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/iris-realms/protocol/openid-connect/certs
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      primary:
+        condition: service_healthy
+      replica:
+        condition: service_started
+      keycloak:
+        condition: service_started
+
+
+
+volumes:
+  primary_data:
+  replica_data:
+  keycloak_data:

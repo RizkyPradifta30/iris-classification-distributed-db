@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iris-backend-config
+  namespace: iris-system
+data:
+  PRIMARY_DB_HOST: "postgres-primary"
+  REPLICA_DB_HOST: "postgres-replica"
+  DB_PORT: "5432"
+
+  KEYCLOAK_URL: "http://auth.lokal"
+  KEYCLOAK_REALM: "iris-realms"
+  KEYCLOAK_CLIENT_ID: "iris-api"
+  KEYCLOAK_JWKS_URL: "http://host.minikube.internal:8080/realms/iris-realms/protocol/openid-connect/certs"

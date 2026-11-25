@@ -258,9 +258,3 @@ Pengujian penghapusan dan pembuatan ulang Pod telah dilakukan dan data tetap ter
 - Password dan client secret disimpan menggunakan Kubernetes Secret.
 - Konfigurasi non-rahasia dikelola melalui ConfigMap.
 - File `.env` dan Secret lokal dikecualikan dari Git.
-
-## 13. Catatan
-
-Proyek ini dibuat sebagai implementasi tugas Ujian Tengah Semester mata kuliah Sistem Basis Data Terdistribusi.
-
-Pengujian dilakukan menggunakan Docker Desktop, WSL2 Ubuntu, dan Minikube.
